@@ -40,7 +40,7 @@ parser.add_argument('-v', '--verbose', action='count', dest='verbosity',
                     help='increase output verbosity', default=0)
 parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
 
-args = parser.parse_args()
+args, extra_args = parser.parse_known_args()
 
 # -----------------------------------------------------------------------------
 # Platform Checks
@@ -82,17 +82,19 @@ def tryimport(name, globals={}, locals={}, fromlist=[], level=-1):
 if not DARWIN_FOUNDATION_AVAILABLE:
     realimport, __builtin__.__import__ = __builtin__.__import__, tryimport
 
-if os.path.isfile(MUNKI_ZIP):
-    with zipfile.ZipFile(MUNKI_ZIP, 'r') as munki_zip:
+if os.path.isdir('munkilib'):
+    MUNKILIB_AVAILABLE = True
+    munkilib_version = plistlib.readPlist('munkilib/version.plist').get('CFBundleShortVersionString')
     
-        version_plist = munki_zip.open("%s/%s" % (MUNKILIB_PATH, 'version.plist'), 'r')
-        munkilib_version = plistlib.readPlist(version_plist).get('CFBundleShortVersionString')
-        
-        MUNKILIB_AVAILABLE = True
+    from munkilib import utils
+    from munkilib import munkicommon
+    from munkilib import adobeutils
     
-        for filename in munki_zip.namelist():
-            if filename.startswith(MUNKILIB_PATH) and filename.endswith('.py'):
-                 #munki_master_zip.open(filename, 'r').read()
+    if DARWIN_FOUNDATION_AVAILABLE:
+        from munkilib import FoundationPlist
+        from munkilib import appleupdates
+        from munkilib import profiles
+        from munkilib import fetch
 
 # Verbose environment output
 if args.verbosity > 1:
@@ -122,18 +124,15 @@ def print_zip_info(zf):
         print '\tUncompressed:\t', info.file_size, 'bytes'
         print
 
-
-
+# -----------------------------------------------------------------------------
+# Core
+# -----------------------------------------------------------------------------
 print 'Number of arguments:', len(sys.argv), 'arguments.'
 print 'Argument List:', str(sys.argv)
 
 file_path = sys.argv[-1]
 file_mime, file_encoding = guess_file_type(file_path)
-file_is_local = True if os.path.isfile(file_path)  else False
-
-# -----------------------------------------------------------------------------
-# Core
-# -----------------------------------------------------------------------------
+file_is_local = True if os.path.isfile(file_path) else False
 
 if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE:
 
@@ -144,8 +143,7 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
         print adobeutils.getAdobeSetupInfo(mount)
         munkicommon.unmountdmg(mount)
 
-
-if file_mime == 'application/zip' and file_is_local:
+elif file_mime == 'application/zip' and file_is_local:
     zf = zipfile.ZipFile(file_path, 'r')
     print zf.namelist()
     print_zip_info(zf)

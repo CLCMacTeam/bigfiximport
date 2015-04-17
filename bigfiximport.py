@@ -215,28 +215,39 @@ elif file_mime == 'application/zip' and file_is_local:
 
     shutil.rmtree(extractdir)
 
-# Process Adobe Update (Mac)
+# Process Adobe Update
 if 'adobe_setup_info' in locals():
     #print adobe_setup_info
 
     display_name, version = adobe_setup_info['display_name'], adobe_setup_info['version']
+    payloads = adobe_setup_info['payloads']
     
+    # Sanitize and workaround Adobe naming inconsistency
     name = ''.join(display_name.split('.'))
     if 'Flash' in name and 'Professional ' in name:
         name = name.replace('Professional ', '')
     
-    base_version = "%s.0" % version.split('.')[0]
-    file_name = file_path.split('/')[-1]
+    base_version = "%s.0.0" % version.split('.')[0]
+    file_name = os.path.basename(file_path)
+    
+    #base_file_name = os.path.splitext(file_path)
     base_file_name = file_name.split('-')[0].split('.')[0]
-    relative_adobepatchinstaller = '/'.join(adobepatchinstaller.split('/')[3:])
-    payloads = adobe_setup_info['payloads']
+    
+    # TODO: Make cross platform
+    if '/' in adobepatchinstaller:
+        relative_path_to_adobepatchinstaller = '/'.join(adobepatchinstaller.split('/')[3:])
+    else:
+        relative_path_to_adobepatchinstaller = adobepatchinstaller
 
-    template = env.get_template('ccupdatemacosx.bes')
+    # Setup template
+    if PLATFORM is 'darwin':
+        template = env.get_template('ccupdatemacosx.bes')
 
+    # Render and POST new task to console site
     new_task = B.post('tasks/custom/SysManDev', template.render(name=name,
                                                 display_name=display_name,
                                                 version=version,
-                                                adobepatchinstaller=relative_adobepatchinstaller,
+                                                adobepatchinstaller=relative_path_to_adobepatchinstaller,
                                                 base_version=base_version,
                                                 file_name=file_name,
                                                 base_file_name=base_file_name,
@@ -247,4 +258,5 @@ if 'adobe_setup_info' in locals():
                                                 size=size,
                                                 payloads=payloads)
                                 )
-    print "\nNew Task: %s - %s" % (str(new_task().Task.Name), str(new_task().Task.ID))
+    if new_task:
+        print "\nNew Task: %s - %s" % (str(new_task().Task.Name), str(new_task().Task.ID))

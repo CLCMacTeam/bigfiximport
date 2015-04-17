@@ -205,13 +205,13 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
 elif file_mime == 'application/zip' and file_is_local:
     
     # Pick template based on '64bit' or '32bit' in file_path
-    if any(x in file_path for x in ['64Bit', '64bit']):
+    if any(x in file_path for x in ['64Bit', '64bit', 'X64', 'x64']):
         template = env.get_template('ccupdatewindows64.bes')
-    if any(x in file_path for x in ['32Bit', '32bit']):
+    elif any(x in file_path for x in ['32Bit', '32bit']):
         template = env.get_template('ccupdatewindows32.bes')
     else:
         template = env.get_template('ccupdatewindows.bes')
-    
+
     zf = zipfile.ZipFile(file_path, 'r')
     extractdir = os.path.join(tempfile.gettempdir(), file_name_noextension)
 

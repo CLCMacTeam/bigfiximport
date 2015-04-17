@@ -12,12 +12,16 @@ A utility for creating IBM Endpoint Manager (BigFix) tasks.
 
 import os
 import sys
+import shutil
 import argparse
 import zipfile
+import tempfile
 import datetime
 import mimetypes
 import plistlib
 import pkg_resources
+
+from xml.etree import ElementTree as ET
 
 # Needed to ignore some import errors
 import __builtin__
@@ -134,20 +138,40 @@ file_path = sys.argv[-1]
 file_mime, file_encoding = guess_file_type(file_path)
 file_is_local = True if os.path.isfile(file_path) else False
 
+# Mac Adobe Update (.dmg)
 if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE:
 
     mounts = adobeutils.mountAdobeDmg(file_path)
 
     for mount in mounts:
-        print adobeutils.findAdobePatchInstallerApp(mount)
-        print adobeutils.getAdobeSetupInfo(mount)
+        adobepatchinstaller = adobeutils.findAdobePatchInstallerApp(mount)
+        adobe_setup_info = adobeutils.getAdobeSetupInfo(mount)
         munkicommon.unmountdmg(mount)
 
+# Windows Adobe Update (.zip)
 elif file_mime == 'application/zip' and file_is_local:
     zf = zipfile.ZipFile(file_path, 'r')
-    print zf.namelist()
-    print_zip_info(zf)
-    
-    
 
+    extractdir = "%s/%s" % (tempfile.gettempdir(), os.path.splitext(os.path.basename(file_path))[0])
 
+    for name in zf.namelist():
+        if not name.endswith('.zip') and not name.endswith('.exe'):
+            (dirname, filename) = os.path.split(name)
+            if not os.path.exists("%s/%s" % (extractdir, dirname)):
+                os.makedirs("%s/%s" % (extractdir, dirname))
+            zf.extract(name, "%s/%s" % (extractdir, dirname))
+
+    adobepatchinstaller = 'AdobePatchInstaller.exe'
+    adobe_setup_info = adobeutils.getAdobeSetupInfo(extractdir)
+
+    with zf.open('payloads/setup.xml', 'r') as setupfile:
+        root = ET.parse(setupfile).getroot()
+    
+        adobe_setup_info['display_name'] = root.find('''.//Media/Volume/Name''').text
+        adobe_setup_info['version'] = root.attrib['version']
+
+    shutil.rmtree(extractdir)
+    
+print adobepatchinstaller
+name, version = adobe_setup_info['display_name'], adobe_setup_info['version']
+print "%s - %s" % (name, version)

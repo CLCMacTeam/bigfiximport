@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Update: Adobe ETLA Creative Cloud: {{ display_name }} {{ version }} - Windows</Title>
+		<Description><![CDATA[<h3>{{ display_name }} {{ version }} Update</h3>
+<br/>
+<h5>{{ description }}</h5>
+<br/>
+<table>
+<tr><th>Payload Name</th><th>Version</th><th>Size</th><th>Adobe Payload Code</th></tr>
+{% for p in payloads %}
+<tr><td>{{ p.get('display_name') }}</td><td>{{ p.get('version') }}</td><td>{{ p.get('installed_size') }}</td><td>{{ p.get('AdobeCode') }}</td></tr>{% endfor %}
+</table>
+		]]></Description>
+		<Relevance>windows of operating system</Relevance>
+		<Relevance><![CDATA[version of operating system >= "5.1"]]></Relevance>
+		<Relevance><![CDATA[exists keys whose (value "DisplayName" of it as string contains "Adobe {{ name }}" AND (it >= "{{ base_version }}" as version AND it < "{{ version }}" as version) of (value "DisplayVersion" of it as string as version)) of keys "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" of (x64 registries;x32 registries)]]></Relevance>
+		<Category>Software Sharing</Category>
+		<DownloadSize>{{ size }}</DownloadSize>
+		<Source>bigfiximport.py</Source>
+		<SourceID>{{ user }}</SourceID>
+		<SourceReleaseDate>{{ today }}</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>{{ strftime }}</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.zip sha1:{{ sha1 }} size:{{ size }} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/AdobeCC/Updates/aamporter/aamcache/{{ file_name }}
+
+//  - This unzip is a compiled verion of unzip v5.52 fom http://info-zip.org/
+//  - https://www.virustotal.com/en/file/8d9b5190aace52a1db1ac73a65ee9999c329157c8e88f61a772433323d6b7a4a/analysis
+prefetch unzip.exe sha1:e1652b058195db3f5f754b7ab430652ae04a50b8 size:167936 http://software.bigfix.com/download/redist/unzip-5.52.exe
+
+// ADD TO UTILITY CACHE (to use in multiple tasks)
+utility __Download\unzip.exe
+
+waithidden __Download\unzip.exe -o "{pathname of file "setup.zip" of folder "__Download" of client folder of current site}" -d "{pathname of folder "__Download" of client folder of current site}"
+
+// --mode=silent --skipProcessCheck=1
+waithidden __Download\AdobePatchInstaller.exe --mode=silent]]></ActionScript>
+			<SuccessCriteria Option="OriginalRelevance"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

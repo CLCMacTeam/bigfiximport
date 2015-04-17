@@ -130,7 +130,7 @@ if args.verbosity > 1:
 
 # -----------------------------------------------------------------------------
 # besapi Config
-# TODO: Make cross platform
+# TODO: Make config paths work cross platform
 # -----------------------------------------------------------------------------
 
 # Read Config File
@@ -181,37 +181,61 @@ file_is_local = True if os.path.isfile(file_path) else False
 sha1 = hashlib.sha1(file(file_path).read()).hexdigest()
 size = os.path.getsize(file_path)
 
+file_name = os.path.basename(file_path)
+file_name_noextension, file_extension = os.path.splitext(file_name)
+base_file_name = file_name.split('-')[0].split('.')[0]
+
 # Mac Adobe Update (.dmg)
 if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE:
-
+    template = env.get_template('ccupdatemacosx.bes')
     mounts = adobeutils.mountAdobeDmg(file_path)
 
     for mount in mounts:
         adobepatchinstaller = adobeutils.findAdobePatchInstallerApp(mount)
         adobe_setup_info = adobeutils.getAdobeSetupInfo(mount)
+        payloads_root = adobepatchinstaller.replace('AdobePatchInstaller.app/Contents/MacOS/AdobePatchInstaller', '')
+        
+        with open(os.path.join(payloads_root, 'payloads', 'UpdateManifest.xml'), 'r') as setupfile:
+            root = ET.parse(setupfile).getroot()
+            adobe_setup_info['description'] = root.find('''.//Description/en_US''').text
+        
         munkicommon.unmountdmg(mount)
 
 # Windows Adobe Update (.zip)
 elif file_mime == 'application/zip' and file_is_local:
+    
+    # Pick template based on '64bit' or '32bit' in file_path
+    if any(x in file_path for x in ['64Bit', '64bit']):
+        template = env.get_template('ccupdatewindows64.bes')
+    if any(x in file_path for x in ['32Bit', '32bit']):
+        template = env.get_template('ccupdatewindows32.bes')
+    else:
+        template = env.get_template('ccupdatewindows.bes')
+    
     zf = zipfile.ZipFile(file_path, 'r')
-
-    extractdir = os.path.join(tempfile.gettempdir(), os.path.splitext(os.path.basename(file_path))[0])
+    extractdir = os.path.join(tempfile.gettempdir(), file_name_noextension)
 
     for name in zf.namelist():
         if not name.endswith('.zip') and not name.endswith('.exe'):
+            if name.endswith('Setup.xml') or name.endswith('setup.xml'):
+                setup_xml = name
+            elif name.endswith('UpdateManifest.xml'):
+                update_manifest = name
+            
             (dirname, filename) = os.path.split(name)
-            if not os.path.exists(os.path.join(extractdir, dirname)):
-                os.makedirs(os.path.join(extractdir, dirname))
-            zf.extract(name, os.path.join(extractdir, dirname))
+            zf.extract(name, extractdir)
 
     adobepatchinstaller = 'AdobePatchInstaller.exe'
     adobe_setup_info = adobeutils.getAdobeSetupInfo(extractdir)
 
-    with zf.open(os.path.join('payloads', 'setup.xml'), 'r') as setupfile:
+    with open(os.path.join(extractdir, setup_xml), 'r') as setupfile:
         root = ET.parse(setupfile).getroot()
-
         adobe_setup_info['display_name'] = root.find('''.//Media/Volume/Name''').text
-        adobe_setup_info['version'] = root.attrib['version']
+    
+    with open(os.path.join(extractdir, update_manifest), 'r') as manifestfile:
+        root = ET.parse(manifestfile).getroot()
+        adobe_setup_info['version'] = root.find('''.//UpdateID''').text
+        adobe_setup_info['description'] = root.find('''.//Description/en_US''').text
 
     shutil.rmtree(extractdir)
 
@@ -219,34 +243,32 @@ elif file_mime == 'application/zip' and file_is_local:
 if 'adobe_setup_info' in locals():
     #print adobe_setup_info
 
-    display_name, version = adobe_setup_info['display_name'], adobe_setup_info['version']
+    display_name = adobe_setup_info['display_name']
+    version = adobe_setup_info['version']
     payloads = adobe_setup_info['payloads']
+    description = adobe_setup_info['description'].replace(u'\xa0', u' ')
+    
+    if ':' in description:
+        description = description.split(' : ', 1)[-1]
     
     # Sanitize and workaround Adobe naming inconsistency
-    name = ''.join(display_name.split('.'))
+    name = ''.join(display_name.split('.')[0])
     if 'Flash' in name and 'Professional ' in name:
         name = name.replace('Professional ', '')
-    
+
     base_version = "%s.0.0" % version.split('.')[0]
-    file_name = os.path.basename(file_path)
     
-    #base_file_name = os.path.splitext(file_path)
-    base_file_name = file_name.split('-')[0].split('.')[0]
-    
-    # TODO: Make cross platform
+    # TODO: Make this cross platform
     if '/' in adobepatchinstaller:
         relative_path_to_adobepatchinstaller = '/'.join(adobepatchinstaller.split('/')[3:])
     else:
         relative_path_to_adobepatchinstaller = adobepatchinstaller
 
-    # Setup template
-    if PLATFORM is 'darwin':
-        template = env.get_template('ccupdatemacosx.bes')
-
     # Render and POST new task to console site
     new_task = B.post('tasks/custom/SysManDev', template.render(name=name,
                                                 display_name=display_name,
                                                 version=version,
+                                                description=description,
                                                 adobepatchinstaller=relative_path_to_adobepatchinstaller,
                                                 base_version=base_version,
                                                 file_name=file_name,

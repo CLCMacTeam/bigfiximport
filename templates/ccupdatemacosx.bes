@@ -4,6 +4,7 @@
 		<Title>Update: Adobe ETLA Creative Cloud: {{ display_name }} {{ version }} - Mac OS X</Title>
 		<Description><![CDATA[<h3>{{ display_name }} {{ version }} Update</h3>
 <br/>
+<h5>{{ description }}</h5>
 <br/>
 <table>
 <tr><th>Payload Name</th><th>Version</th><th>Size</th><th>Adobe Payload Code</th></tr>

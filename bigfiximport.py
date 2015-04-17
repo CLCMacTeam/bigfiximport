@@ -219,15 +219,22 @@ elif file_mime == 'application/zip' and file_is_local:
 if 'adobe_setup_info' in locals():
     #print adobe_setup_info
 
-    name, version = adobe_setup_info['display_name'], adobe_setup_info['version']
+    display_name, version = adobe_setup_info['display_name'], adobe_setup_info['version']
+    
+    name = ''.join(display_name.split('.'))
+    if 'Flash' in name and 'Professional ' in name:
+        name = name.replace('Professional ', '')
     
     base_version = "%s.0" % version.split('.')[0]
     file_name = file_path.split('/')[-1]
-    base_file_name = file_name.split('-')[0]
+    base_file_name = file_name.split('-')[0].split('.')[0]
     relative_adobepatchinstaller = '/'.join(adobepatchinstaller.split('/')[3:])
+    payloads = adobe_setup_info['payloads']
 
     template = env.get_template('ccupdatemacosx.bes')
+
     new_task = B.post('tasks/custom/SysManDev', template.render(name=name,
+                                                display_name=display_name,
                                                 version=version,
                                                 adobepatchinstaller=relative_adobepatchinstaller,
                                                 base_version=base_version,
@@ -237,7 +244,7 @@ if 'adobe_setup_info' in locals():
                                                 strftime=strftime("%a, %d %b %Y %X +0000", gmtime()),
                                                 user=getpass.getuser(),
                                                 sha1=sha1,
-                                                size=size)
+                                                size=size,
+                                                payloads=payloads)
                                 )
-    print new_task
     print "\nNew Task: %s - %s" % (str(new_task().Task.Name), str(new_task().Task.ID))

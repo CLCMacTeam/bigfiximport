@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
 	<Task>
-		<Title>Update: Adobe ETLA Creative Cloud: Adobe {{ name }} {{ version }} - Mac OS X</Title>
-		<Description><![CDATA[Adobe {{ name }} {{ version }} Update ]]></Description>
+		<Title>Update: Adobe ETLA Creative Cloud: {{ display_name }} {{ version }} - Mac OS X</Title>
+		<Description><![CDATA[<h3>{{ display_name }} {{ version }} Update</h3>
+<br/>
+<br/>
+<table>
+<tr><th>Payload Name</th><th>Version</th><th>Size</th><th>Adobe Payload Code</th></tr>
+{% for p in payloads %}
+<tr><td>{{ p.get('display_name') }}</td><td>{{ p.get('version') }}</td><td>{{ p.get('installed_size') }}</td><td>{{ p.get('AdobeCode') }}</td></tr>{% endfor %}
+</table>
+		]]></Description>
 		<Relevance>mac of operating system</Relevance>
 		<Relevance><![CDATA[exists folder "/Applications/{{ name }}/{{ name }}.app" whose (version of it >= "{{ base_version }}" as version AND version of it < "{{ version }}" as version)]]></Relevance>
 		<Category>Software Sharing</Category>

@@ -33,7 +33,7 @@ from types import ModuleType
 
 __version__ = VERSION = '1.0'
 MUNKI_ZIP = 'munki-master.zip'
-MUNKILIB_PATH = 'munki-master/code/client/munkilib'
+MUNKILIB_PATH = os.path.join('munki-master', 'code', 'client', 'munkilib')
 
 # -----------------------------------------------------------------------------
 # Argument Parsing
@@ -88,7 +88,7 @@ if not DARWIN_FOUNDATION_AVAILABLE:
 
 if os.path.isdir('munkilib'):
     MUNKILIB_AVAILABLE = True
-    munkilib_version = plistlib.readPlist('munkilib/version.plist').get('CFBundleShortVersionString')
+    munkilib_version = plistlib.readPlist(os.path.join('munkilib', 'version.plist')).get('CFBundleShortVersionString')
     
     from munkilib import utils
     from munkilib import munkicommon
@@ -152,19 +152,19 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
 elif file_mime == 'application/zip' and file_is_local:
     zf = zipfile.ZipFile(file_path, 'r')
 
-    extractdir = "%s/%s" % (tempfile.gettempdir(), os.path.splitext(os.path.basename(file_path))[0])
+    extractdir = os.path.join(tempfile.gettempdir(), os.path.splitext(os.path.basename(file_path))[0])
 
     for name in zf.namelist():
         if not name.endswith('.zip') and not name.endswith('.exe'):
             (dirname, filename) = os.path.split(name)
-            if not os.path.exists("%s/%s" % (extractdir, dirname)):
-                os.makedirs("%s/%s" % (extractdir, dirname))
-            zf.extract(name, "%s/%s" % (extractdir, dirname))
+            if not os.path.exists(os.path.join(extractdir, dirname)):
+                os.makedirs(os.path.join(extractdir, dirname))
+            zf.extract(name, os.path.join(extractdir, dirname))
 
     adobepatchinstaller = 'AdobePatchInstaller.exe'
     adobe_setup_info = adobeutils.getAdobeSetupInfo(extractdir)
 
-    with zf.open('payloads/setup.xml', 'r') as setupfile:
+    with zf.open(os.path.join('payloads', 'setup.xml'), 'r') as setupfile:
         root = ET.parse(setupfile).getroot()
     
         adobe_setup_info['display_name'] = root.find('''.//Media/Volume/Name''').text

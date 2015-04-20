@@ -35,7 +35,7 @@
 				<Link>here</Link>
 				<PostLink> to deploy this action.</PostLink>
 			</Description>
-			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.zip sha1:{{ sha1 }} size:{{ size }} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/AdobeCC/Updates/aamporter/aamcache/{{ file_name }}
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.zip sha1:{{ sha1 }} size:{{ size }} {{ url }}
 
 //  - This unzip is a compiled verion of unzip v5.52 fom http://info-zip.org/
 //  - https://www.virustotal.com/en/file/8d9b5190aace52a1db1ac73a65ee9999c329157c8e88f61a772433323d6b7a4a/analysis

@@ -135,9 +135,15 @@ if args.verbosity > 1:
 
 # Read Config File
 CONFPARSER = SafeConfigParser({'VERBOSE': 'True'})
-CONFPARSER.read(['/etc/besapi.conf',
-                 os.path.expanduser('~/besapi.conf'),
-                 'besapi.conf'])
+if PLATFORM is 'win':
+    system_wide_conf_path = os.path.join(os.environ['ALLUSERSPROFILE'], 'besapi.conf')
+    CONFPARSER.read([system_wide_conf_path,
+                     os.path.expanduser('~/besapi.conf'),
+                     'besapi.conf'])
+else:
+    CONFPARSER.read(['/etc/besapi.conf',
+                     os.path.expanduser('~/besapi.conf'),
+                     'besapi.conf'])
 
 BES_ROOT_SERVER = CONFPARSER.get('besapi', 'BES_ROOT_SERVER')
 BES_USER_NAME = CONFPARSER.get('besapi', 'BES_USER_NAME')
@@ -176,6 +182,7 @@ if args.verbosity > 1:
     print 'Argument List:', str(sys.argv)
 
 file_path = sys.argv[-1]
+file_path_noextension = os.path.splitext(file_path)[0]
 file_mime, file_encoding = guess_file_type(file_path)
 file_is_local = True if os.path.isfile(file_path) else False
 sha1 = hashlib.sha1(file(file_path).read()).hexdigest()
@@ -228,20 +235,30 @@ elif file_mime == 'application/zip' and file_is_local:
     adobepatchinstaller = 'AdobePatchInstaller.exe'
     adobe_setup_info = adobeutils.getAdobeSetupInfo(extractdir)
 
-    with open(os.path.join(extractdir, setup_xml), 'r') as setupfile:
-        root = ET.parse(setupfile).getroot()
-        adobe_setup_info['display_name'] = root.find('''.//Media/Volume/Name''').text
+    try:
+        with open(os.path.join(extractdir, setup_xml), 'r') as setupfile:
+            root = ET.parse(setupfile).getroot()
+            adobe_setup_info['display_name'] = root.find('''.//Media/Volume/Name''').text
+    except AttributeError:
+        pass
     
     with open(os.path.join(extractdir, update_manifest), 'r') as manifestfile:
         root = ET.parse(manifestfile).getroot()
         adobe_setup_info['version'] = root.find('''.//UpdateID''').text
         adobe_setup_info['description'] = root.find('''.//Description/en_US''').text
+        
+        # Failed to get display_name from Setup.xml, so look in UpdateManifest
+        if not adobe_setup_info.get('display_name'):
+            adobe_setup_info['display_name'] = root.find('''.//DisplayName/en_US''').text
 
     shutil.rmtree(extractdir)
 
 # Process Adobe Update
 if 'adobe_setup_info' in locals():
     #print adobe_setup_info
+    
+    with open('.'.join([file_path, 'url']), 'r') as url_file:
+        url = url_file.readline()
 
     display_name = adobe_setup_info['display_name']
     version = adobe_setup_info['version']
@@ -267,6 +284,7 @@ if 'adobe_setup_info' in locals():
     # Render and POST new task to console site
     new_task = B.post('tasks/custom/SysManDev', template.render(name=name,
                                                 display_name=display_name,
+                                                url=url,
                                                 version=version,
                                                 description=description,
                                                 adobepatchinstaller=relative_path_to_adobepatchinstaller,

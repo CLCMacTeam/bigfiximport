@@ -33,7 +33,7 @@
 				<Link>here</Link>
 				<PostLink> to deploy this action.</PostLink>
 			</Description>
-			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.dmg sha1:{{ sha1 }} size:{{ size }} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/AdobeCC/Updates/aamporter/aamcache/{{ file_name }}
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.dmg sha1:{{ sha1 }} size:{{ size }} {{ url }}
 
 delete "/tmp/{{ base_file_name }}.dmg"
 move "__Download/{{ base_file_name }}.dmg" "/tmp/{{ base_file_name }}.dmg"

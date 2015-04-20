@@ -174,6 +174,88 @@ def print_zip_info(zf):
         print '\tUncompressed:\t', info.file_size, 'bytes'
         print
 
+def getiteminfo(itempath):
+    """
+    Gets info for filesystem items passed to makecatalog item, to be used for
+    the "installs" key.
+    Determines if the item is an application, bundle, Info.plist, or a file or
+    directory and gets additional metadata for later comparison.
+    """
+    infodict = {}
+    if munkicommon.isApplication(itempath):
+        infodict['type'] = 'application'
+        infodict['path'] = itempath
+        plist = getBundleInfo(itempath)
+        for key in ['CFBundleName', 'CFBundleIdentifier',
+                    'CFBundleShortVersionString', 'CFBundleVersion']:
+            if key in plist:
+                infodict[key] = plist[key]
+        if 'LSMinimumSystemVersion' in plist:
+            infodict['minosversion'] = plist['LSMinimumSystemVersion']
+        elif 'SystemVersionCheck:MinimumSystemVersion' in plist:
+            infodict['minosversion'] = \
+                plist['SystemVersionCheck:MinimumSystemVersion']
+        else:
+            infodict['minosversion'] = '10.6'
+
+    elif os.path.exists(os.path.join(itempath, 'Contents', 'Info.plist')) or \
+         os.path.exists(os.path.join(itempath, 'Resources', 'Info.plist')):
+        infodict['type'] = 'bundle'
+        infodict['path'] = itempath
+        plist = getBundleInfo(itempath)
+        for key in ['CFBundleShortVersionString', 'CFBundleVersion']:
+            if key in plist:
+                infodict[key] = plist[key]
+
+    elif itempath.endswith("Info.plist") or \
+         itempath.endswith("version.plist"):
+        infodict['type'] = 'plist'
+        infodict['path'] = itempath
+        try:
+            plist = FoundationPlist.readPlist(itempath)
+            for key in ['CFBundleShortVersionString', 'CFBundleVersion']:
+                if key in plist:
+                    infodict[key] = plist[key]
+        except FoundationPlist.NSPropertyListSerializationException:
+            pass
+
+    # let's help the admin -- if CFBundleShortVersionString is empty
+    # or doesn't start with a digit, and CFBundleVersion is there
+    # use CFBundleVersion as the version_comparison_key
+    if (not infodict.get('CFBundleShortVersionString') or
+        infodict['CFBundleShortVersionString'][0]
+        not in '0123456789'):
+        if infodict.get('CFBundleVersion'):
+            infodict['version_comparison_key'] = 'CFBundleVersion'
+    elif 'CFBundleShortVersionString' in infodict:
+        infodict['version_comparison_key'] = 'CFBundleShortVersionString'
+
+    if not 'CFBundleShortVersionString' in infodict and \
+       not 'CFBundleVersion' in infodict:
+        infodict['type'] = 'file'
+        infodict['path'] = itempath
+        if os.path.isfile(itempath):
+            infodict['md5checksum'] = munkicommon.getmd5hash(itempath)
+    return infodict
+    
+def getBundleInfo(path):
+    """
+    Returns Info.plist data if available
+    for bundle at path
+    """
+    infopath = os.path.join(path, "Contents", "Info.plist")
+    if not os.path.exists(infopath):
+        infopath = os.path.join(path, "Resources", "Info.plist")
+
+    if os.path.exists(infopath):
+        try:
+            plist = FoundationPlist.readPlist(infopath)
+            return plist
+        except FoundationPlist.NSPropertyListSerializationException:
+            pass
+
+    return None
+
 # -----------------------------------------------------------------------------
 # Core
 # -----------------------------------------------------------------------------
@@ -192,8 +274,51 @@ file_name = os.path.basename(file_path)
 file_name_noextension, file_extension = os.path.splitext(file_name)
 base_file_name = file_name.split('-')[0].split('.')[0]
 
+if 'adobe' in file_path.lower():
+    IS_ADOBE_UPDATE = True
+else:
+    IS_ADOBE_UPDATE = False
+
+# -----------------------------------------------------------------------------
+# OS X Drag & Drop App
+# -----------------------------------------------------------------------------
+if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE and not IS_ADOBE_UPDATE:
+    template = env.get_template('copyfromdmg.bes')
+    mountpoints = munkicommon.mountdmg(file_path, use_existing_mounts=True)
+
+    for itemname in munkicommon.listdir(mountpoints[0]):
+        itempath = os.path.join(mountpoints[0], itemname)
+        if munkicommon.isApplication(itempath):
+            item = itemname
+            iteminfo = getiteminfo(itempath)
+            if iteminfo:
+                break
+                    
+    if iteminfo:
+        if os.path.isabs(item):
+            mountpointPattern = "^%s/" % mountpoints[0]
+            item = re.sub(mountpointPattern, '', item)
+
+        cataloginfo = {}
+        cataloginfo['display_name'] = iteminfo.get('CFBundleName',
+                                        os.path.splitext(item)[0])
+        version_comparison_key = iteminfo.get(
+            'version_comparison_key', "CFBundleShortVersionString")
+        cataloginfo['version'] = \
+            iteminfo.get(version_comparison_key, "0")
+        cataloginfo.update(iteminfo)
+        cataloginfo['item_to_copy'] = item
+
+#eject the dmg
+munkicommon.unmountdmg(mountpoints[0])
+new_task = B.post('tasks/custom/SysManDev', template.render(**cataloginfo))
+
+# -----------------------------------------------------------------------------
+# Adobe Updates
+# -----------------------------------------------------------------------------
+
 # Mac Adobe Update (.dmg)
-if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE:
+if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE and IS_ADOBE_UPDATE:
     template = env.get_template('ccupdatemacosx.bes')
     mounts = adobeutils.mountAdobeDmg(file_path)
 
@@ -209,7 +334,7 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
         munkicommon.unmountdmg(mount)
 
 # Windows Adobe Update (.zip)
-elif file_mime == 'application/zip' and file_is_local:
+elif file_mime == 'application/zip' and file_is_local and IS_ADOBE_UPDATE:
     
     # Pick template based on '64bit' or '32bit' in file_path
     if any(x in file_path for x in ['64Bit', '64bit', 'X64', 'x64']):
@@ -282,6 +407,7 @@ if 'adobe_setup_info' in locals():
         relative_path_to_adobepatchinstaller = adobepatchinstaller
 
     # Render and POST new task to console site
+    # TODO: Use **dictionary
     new_task = B.post('tasks/custom/SysManDev', template.render(name=name,
                                                 display_name=display_name,
                                                 url=url,
@@ -298,5 +424,8 @@ if 'adobe_setup_info' in locals():
                                                 size=size,
                                                 payloads=payloads)
                                 )
-    if new_task:
+if 'new_task' in locals(): 
+    if new_task():
         print "\nNew Task: %s - %s" % (str(new_task().Task.Name), str(new_task().Task.ID))
+    else:
+        print new_task

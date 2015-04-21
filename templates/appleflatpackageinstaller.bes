@@ -2,10 +2,10 @@
 <BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
 	<Task>
 		<Title>Install/Upgrade: {{ display_name }} {{ version }} - Mac OS X</Title>
-		<Description><![CDATA[<h5>Deploy {{ display_name }} {{ version }}</h5>]]></Description>
+		<Description><![CDATA[<h5>Deploy {{ display_name }} {{ version }}</h5><br/>{{ description }}]]></Description>
 		<Relevance>mac of operating system</Relevance>
-		<Relevance><![CDATA[system version >= "{{ minosversion }}" as version]]></Relevance>
-		<Relevance><![CDATA[not exists folder "/Applications/{{ item_to_copy }}" whose (version of it >= "{{ version }}" as version)]]></Relevance>
+		<Relevance><![CDATA[system version >= "{{ minimum_os_version }}" as version]]></Relevance>
+		<Relevance><![CDATA[{% for p in receipts %}not exists file "/var/db/receipts/{{ p.packageid }}.plist" whose (exists dictionary whose (string "PackageVersion" of it as version >= "{{ p.version }}" as version) of it{% if not loop.last %} OR {% endif %}{% endfor %})]]></Relevance>
 		<Category>Software Sharing</Category>
 		<DownloadSize>{{ size }}</DownloadSize>
 		<Source>bigfiximport.py</Source>
@@ -25,27 +25,9 @@
 				<Link>here</Link>
 				<PostLink> to deploy this action.</PostLink>
 			</Description>
-			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.dmg sha1:{{ sha1 }} size:{{ size }} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/{{ display_name }}/{{ base_file_name }}-{{ version }}.dmg
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.pkg sha1:{{ sha1 }} size:{{ size }} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/{{ name }}/{{ base_file_name }}-{{ version }}.pkg
 
-delete "/tmp/{{ base_file_name }}.dmg"
-move "__Download/{{ base_file_name }}.dmg" "/tmp/{{ base_file_name }}.dmg"
-
-wait /usr/bin/hdiutil attach -quiet -nobrowse -mountpoint "/tmp/{{ base_file_name }}" "/tmp/{{ base_file_name }}.dmg"
-
-continue if {exists folder "/tmp/{{ base_file_name }}/{{ item_to_copy }}"}
-
-if {exists folder "/Applications/{{ item_to_copy }}"}
-    wait /bin/rm -rfd "/Applications/{{ item_to_copy }}"
-endif
-wait /bin/cp -Rfp "/tmp/{{ base_file_name }}/{{ item_to_copy }}" "/Applications"
-
-wait /usr/bin/hdiutil detach -force "/tmp/{{ base_file_name }}"
-
-wait /usr/sbin/chown -R root:admin "/Applications/{{ item_to_copy }}"
-wait /bin/chmod -R ug+rw "/Applications/{{ item_to_copy }}"
-wait /bin/chmod -R o+r "/Applications/{{ item_to_copy }}"
-
-delete "/tmp/{{ base_file_name }}.dmg"
+wait /usr/sbin/installer -pkg {{ base_file_name }}.pkg -target /
 
 // Software Sharing Tracking
 wait /bin/sh -c "/usr/bin/defaults write '/Library/Sysman/Sysman' 'Tasks' -array-add 'Software Sharing - {value of header "Subject" of active action} -- Install/Upgrade - {(month of it as two digits & "/" & day_of_month of it as two digits & "/" & year of it as string) of date (local time zone) of now}'"

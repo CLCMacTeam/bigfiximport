@@ -11,6 +11,7 @@ A utility for creating IBM Endpoint Manager (BigFix) tasks.
 """
 
 import os
+import re
 import sys
 import shutil
 import argparse
@@ -173,6 +174,19 @@ def print_zip_info(zf):
         print '\tCompressed:\t', info.compress_size, 'bytes'
         print '\tUncompressed:\t', info.file_size, 'bytes'
         print
+        
+def get_env_source_mime_data():
+    return {
+                'today'     : str(datetime.datetime.now())[:10],
+                'strftime'  : strftime("%a, %d %b %Y %X +0000", gmtime()),
+                'user'      : getpass.getuser()
+            }
+
+def get_sha1_size(file_path):
+    return {
+                'sha1'  : hashlib.sha1(file(file_path).read()).hexdigest(),
+                'size'  : os.path.getsize(file_path)
+            }
 
 def getiteminfo(itempath):
     """
@@ -267,8 +281,6 @@ file_path = sys.argv[-1]
 file_path_noextension = os.path.splitext(file_path)[0]
 file_mime, file_encoding = guess_file_type(file_path)
 file_is_local = True if os.path.isfile(file_path) else False
-sha1 = hashlib.sha1(file(file_path).read()).hexdigest()
-size = os.path.getsize(file_path)
 
 file_name = os.path.basename(file_path)
 file_name_noextension, file_extension = os.path.splitext(file_name)
@@ -286,14 +298,14 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
     template = env.get_template('copyfromdmg.bes')
     mountpoints = munkicommon.mountdmg(file_path, use_existing_mounts=True)
 
-    for itemname in munkicommon.listdir(mountpoints[0]):
+    for (itemname, dummy_dirs, dummy_files) in os.walk(mountpoints[0]):
         itempath = os.path.join(mountpoints[0], itemname)
         if munkicommon.isApplication(itempath):
             item = itemname
             iteminfo = getiteminfo(itempath)
             if iteminfo:
                 break
-                    
+
     if iteminfo:
         if os.path.isabs(item):
             mountpointPattern = "^%s/" % mountpoints[0]
@@ -308,10 +320,13 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
             iteminfo.get(version_comparison_key, "0")
         cataloginfo.update(iteminfo)
         cataloginfo['item_to_copy'] = item
+        cataloginfo['base_file_name'] = base_file_name
+        cataloginfo.update(get_sha1_size(file_path))
+        cataloginfo.update(get_env_source_mime_data())
 
-#eject the dmg
-munkicommon.unmountdmg(mountpoints[0])
-new_task = B.post('tasks/custom/SysManDev', template.render(**cataloginfo))
+    #eject the dmg
+    munkicommon.unmountdmg(mountpoints[0])
+    new_task = B.post('tasks/custom/SysManDev', template.render(**cataloginfo))
 
 # -----------------------------------------------------------------------------
 # Adobe Updates
@@ -323,13 +338,19 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
     mounts = adobeutils.mountAdobeDmg(file_path)
 
     for mount in mounts:
-        adobepatchinstaller = adobeutils.findAdobePatchInstallerApp(mount)
-        adobe_setup_info = adobeutils.getAdobeSetupInfo(mount)
-        payloads_root = adobepatchinstaller.replace('AdobePatchInstaller.app/Contents/MacOS/AdobePatchInstaller', '')
-        
-        with open(os.path.join(payloads_root, 'payloads', 'UpdateManifest.xml'), 'r') as setupfile:
+        adobe_info = adobeutils.getAdobeSetupInfo(mount)
+        adobe_info['adobepatchinstaller'] = adobeutils.findAdobePatchInstallerApp(mount)
+
+        mountpointPattern = "^%s/" % mount
+        adobepatchinstaller = re.sub(mountpointPattern, '', adobe_info['adobepatchinstaller'])
+
+        for (path, dummy_dirs, dummy_files) in os.walk(mount):
+            if path.endswith('/payloads'):
+                payloads_dir = path
+
+        with open(os.path.join(payloads_dir, 'UpdateManifest.xml'), 'r') as setupfile:
             root = ET.parse(setupfile).getroot()
-            adobe_setup_info['description'] = root.find('''.//Description/en_US''').text
+            adobe_info['description'] = root.find('''.//Description/en_US''').text.replace(u'\xa0', u' ')
         
         munkicommon.unmountdmg(mount)
 
@@ -357,75 +378,56 @@ elif file_mime == 'application/zip' and file_is_local and IS_ADOBE_UPDATE:
             (dirname, filename) = os.path.split(name)
             zf.extract(name, extractdir)
 
-    adobepatchinstaller = 'AdobePatchInstaller.exe'
-    adobe_setup_info = adobeutils.getAdobeSetupInfo(extractdir)
+    adobe_info = adobeutils.getAdobeSetupInfo(extractdir)
+    adobe_info['adobepatchinstaller'] = 'AdobePatchInstaller.exe'
 
     try:
         with open(os.path.join(extractdir, setup_xml), 'r') as setupfile:
             root = ET.parse(setupfile).getroot()
-            adobe_setup_info['display_name'] = root.find('''.//Media/Volume/Name''').text
+            adobe_info['display_name'] = root.find('''.//Media/Volume/Name''').text
     except AttributeError:
-        pass
+        pass # Can't find display name, so we'll get it from UpdateManifest next
     
     with open(os.path.join(extractdir, update_manifest), 'r') as manifestfile:
         root = ET.parse(manifestfile).getroot()
-        adobe_setup_info['version'] = root.find('''.//UpdateID''').text
-        adobe_setup_info['description'] = root.find('''.//Description/en_US''').text
+        adobe_info['version'] = root.find('''.//UpdateID''').text
+        adobe_info['description'] = root.find('''.//Description/en_US''').text.replace(u'\xa0', u' ')
         
         # Failed to get display_name from Setup.xml, so look in UpdateManifest
-        if not adobe_setup_info.get('display_name'):
-            adobe_setup_info['display_name'] = root.find('''.//DisplayName/en_US''').text
+        if not adobe_info.get('display_name'):
+            adobe_info['display_name'] = root.find('''.//DisplayName/en_US''').text
 
     shutil.rmtree(extractdir)
 
 # Process Adobe Update
-if 'adobe_setup_info' in locals():
-    #print adobe_setup_info
+if 'adobe_info' in locals():
     
+    # Get direct download link from url file
     with open('.'.join([file_path, 'url']), 'r') as url_file:
-        url = url_file.readline()
-
-    display_name = adobe_setup_info['display_name']
-    version = adobe_setup_info['version']
-    payloads = adobe_setup_info['payloads']
-    description = adobe_setup_info['description'].replace(u'\xa0', u' ')
+        adobe_info['url'] = url_file.readline()
     
-    if ':' in description:
-        description = description.split(' : ', 1)[-1]
+    # Trim description
+    if ':' in adobe_info['description']:
+        adobe_info['description'] = adobe_info['description'].split(' : ', 1)[-1]
     
     # Sanitize and workaround Adobe naming inconsistency
-    name = ''.join(display_name.split('.')[0])
-    if 'Flash' in name and 'Professional ' in name:
-        name = name.replace('Professional ', '')
+    adobe_info['name'] = ''.join(adobe_info['display_name'].split('.')[0])
+    if 'Flash' in adobe_info['name'] and 'Professional ' in adobe_info['name']:
+        adobe_info['name'] = adobe_info['name'].replace('Professional ', '')
 
-    base_version = "%s.0.0" % version.split('.')[0]
-    
-    # TODO: Make this cross platform
-    if '/' in adobepatchinstaller:
-        relative_path_to_adobepatchinstaller = '/'.join(adobepatchinstaller.split('/')[3:])
-    else:
-        relative_path_to_adobepatchinstaller = adobepatchinstaller
+    # Determine base version
+    adobe_info['base_version'] = "%s.0.0" % adobe_info['version'].split('.')[0]
+
+    adobe_info['base_file_name'] = base_file_name
+    adobe_info.update(get_env_source_mime_data())
+    adobe_info.update(get_sha1_size(file_path))
 
     # Render and POST new task to console site
-    # TODO: Use **dictionary
-    new_task = B.post('tasks/custom/SysManDev', template.render(name=name,
-                                                display_name=display_name,
-                                                url=url,
-                                                version=version,
-                                                description=description,
-                                                adobepatchinstaller=relative_path_to_adobepatchinstaller,
-                                                base_version=base_version,
-                                                file_name=file_name,
-                                                base_file_name=base_file_name,
-                                                today=str(datetime.datetime.now())[:10],
-                                                strftime=strftime("%a, %d %b %Y %X +0000", gmtime()),
-                                                user=getpass.getuser(),
-                                                sha1=sha1,
-                                                size=size,
-                                                payloads=payloads)
-                                )
+    new_task = B.post('tasks/custom/SysManDev', template.render(**adobe_info))
+
+# Reporting Output
 if 'new_task' in locals(): 
-    if new_task():
+    if len(new_task()):
         print "\nNew Task: %s - %s" % (str(new_task().Task.Name), str(new_task().Task.ID))
     else:
         print new_task

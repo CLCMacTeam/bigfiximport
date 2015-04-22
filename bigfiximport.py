@@ -532,7 +532,7 @@ if 'rendered_template' in locals():
 
     to_import = raw_input('Import into tasks/custom/SysManDev [y or n]: ')
     if to_import and to_import.lower() in ['y', 'yes']:
-        new_task = B.post('tasks/custom/SysManDev', template.render(**adobe_info))
+        new_task = B.post('tasks/custom/SysManDev', rendered_template)
 
 # Reporting Output
 if 'new_task' in locals(): 

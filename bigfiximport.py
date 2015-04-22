@@ -361,8 +361,8 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
             cataloginfo.update(get_sha1_size(file_path))
             cataloginfo.update(get_env_source_mime_data())
             
-            # Render and POST new task to console site
-            new_task = B.post('tasks/custom/SysManDev', template.render(**cataloginfo))
+            # Render new task
+            rendered_template = template.render(**cataloginfo)
     except:
         print "Unable to read application data from disk image!"
         sys.exit(1)
@@ -382,10 +382,9 @@ if file_mime == 'application/octet-stream' and file_extension == '.pkg' and args
     pkginfo.update(get_env_source_mime_data())
     pkginfo['base_file_name'] = base_file_name
     
-    # Render and POST new task to console site
-    #new_task = B.post('tasks/custom/SysManDev', template.render(**pkginfo))
-    print template.render(**pkginfo)
-    
+    # Render new task
+    rendered_template = template.render(**pkginfo)
+
 # -----------------------------------------------------------------------------
 # OS X Bundle Installer Package (.mpkg)
 # -----------------------------------------------------------------------------
@@ -491,7 +490,7 @@ if args.adobe:
             adobe_info['description'] = root.find('''.//Description/en_US''').text.replace(u'\xa0', u' ')
             
             # Failed to get display_name from Setup.xml, so look in UpdateManifest
-            if not adobe_info.get('display_name'):
+            if not adobe_info.get('display_name') or [e in adobe_info.get('display_name') for e in ['_', '-'] if e in adobe_info.get('display_name')]:
                 adobe_info['display_name'] = root.find('''.//DisplayName/en_US''').text
     
         shutil.rmtree(extractdir)
@@ -511,7 +510,9 @@ if args.adobe:
         adobe_info['name'] = ''.join(adobe_info['display_name'].split('.')[0])
         if 'Flash' in adobe_info['name'] and 'Professional ' in adobe_info['name']:
             adobe_info['name'] = adobe_info['name'].replace('Professional ', '')
-    
+        if 'Adobe ' in adobe_info['name']:
+            adobe_info['name'] = adobe_info['name'].replace('Adobe ', '')
+
         # Determine base version
         adobe_info['base_version'] = "%s.0.0" % adobe_info['version'].split('.')[0]
     
@@ -519,7 +520,18 @@ if args.adobe:
         adobe_info.update(get_env_source_mime_data())
         adobe_info.update(get_sha1_size(file_path))
     
-        # Render and POST new task to console site
+        # Render new task
+        rendered_template = template.render(**adobe_info)
+
+# -----------------------------------------------------------------------------
+# Import Into Console Site
+# -----------------------------------------------------------------------------
+
+if 'rendered_template' in locals():
+    print rendered_template
+
+    to_import = raw_input('Import into tasks/custom/SysManDev [y or n]: ')
+    if to_import and to_import.lower() in ['y', 'yes']:
         new_task = B.post('tasks/custom/SysManDev', template.render(**adobe_info))
 
 # Reporting Output

@@ -432,10 +432,10 @@ if args.adobe:
         try:
             for mount in mounts:
                 adobe_info = adobeutils.getAdobeSetupInfo(mount)
-                adobe_info['adobepatchinstaller'] = adobeutils.findAdobePatchInstallerApp(mount)
+                adobepatchinstaller = adobeutils.findAdobePatchInstallerApp(mount)
         
                 mountpointPattern = "^%s/" % mount
-                adobepatchinstaller = re.sub(mountpointPattern, '', adobe_info['adobepatchinstaller'])
+                adobe_info['adobepatchinstaller'] = re.sub(mountpointPattern, '', adobepatchinstaller) 
     
                 for (path, dummy_dirs, dummy_files) in os.walk(mount):
                     if path.endswith('/payloads'):

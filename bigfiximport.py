@@ -412,11 +412,8 @@ if HACHOIR_AVAILABLE and file_mime == 'application/x-msdownload' and file_extens
     for data_item in getHachoirMetaData(file_path):
         for value in data_item.values:
             mimeinfo[data_item.key] = filter(lambda x: x in string.printable, value.text)
-
-    #print mimeinfo
-    with zipfile.ZipFile(file_path, 'r') as exe:
-       print_zip_info(exe)
-    
+            
+    print mimeinfo
 
 # -----------------------------------------------------------------------------
 # Adobe Updates

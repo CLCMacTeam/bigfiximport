@@ -5,7 +5,7 @@
 		<Description><![CDATA[<h5>Deploy {{ display_name }} {{ version }}</h5>]]></Description>
 		<Relevance>mac of operating system</Relevance>
 		<Relevance><![CDATA[system version >= "{{ minosversion }}" as version]]></Relevance>
-		<Relevance><![CDATA[not exists folder "/Applications/{{ item_to_copy }}" whose (version of it >= "{{ version }}" as version)]]></Relevance>
+		<Relevance><![CDATA[not exists folder "/Applications/{{ item_to_copy }}" whose ({% if version_comparison_key == 'CFBundleVersion' %}bundle version{% else %}version{% endif %} of it >= "{{ version }}" as version)]]></Relevance>
 		<Category>Software Sharing</Category>
 		<DownloadSize>{{ size }}</DownloadSize>
 		<Source>bigfiximport.py</Source>

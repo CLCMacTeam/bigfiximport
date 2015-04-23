@@ -75,8 +75,11 @@ args, extra_args = parser.parse_known_args()
 # Platform Checks
 # -----------------------------------------------------------------------------
 
-# this shouldn't be needed, but for some reason I'm getting errors on Linux that "name 'DARWIN_FOUNDATION_AVAILABLE' is not defined"
+# Predefine Flags - these will be set to true if imported
 DARWIN_FOUNDATION_AVAILABLE = False
+BESAPI_AVAILABLE = False
+HACHOIR_AVAILABLE = False
+MUNKILIB_AVAILABLE = False
 
 if sys.platform.startswith('darwin'):
     PLATFORM = 'darwin'

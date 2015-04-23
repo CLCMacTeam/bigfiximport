@@ -14,7 +14,7 @@
 		]]></Description>
 		<Relevance>windows of operating system</Relevance>
 		<Relevance><![CDATA[version of operating system >= "5.1"]]></Relevance>
-		<Relevance><![CDATA[exists keys whose (value "DisplayName" of it as string contains "Adobe {{ name }}" AND (it >= "{{ base_version }}" as version AND it < "{{ version }}" as version) of (value "DisplayVersion" of it as string as version)) of keys "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" of (x64 registries;x32 registries)]]></Relevance>
+		<Relevance><![CDATA[exists keys whose (value "DisplayName" of it as string contains "{{ name }}" AND (it >= "{{ base_version }}" as version AND it < "{{ version }}" as version) of (value "DisplayVersion" of it as string as version)) of keys "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" of (x64 registries;x32 registries)]]></Relevance>
 		<Category>Software Sharing</Category>
 		<DownloadSize>{{ size }}</DownloadSize>
 		<Source>bigfiximport.py</Source>

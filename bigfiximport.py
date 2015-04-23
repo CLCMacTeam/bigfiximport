@@ -436,10 +436,17 @@ if args.adobe:
             for mount in mounts:
                 adobe_info = adobeutils.getAdobeSetupInfo(mount)
                 adobepatchinstaller = adobeutils.findAdobePatchInstallerApp(mount)
-        
+
+                # Remove mountpoint from path
                 mountpointPattern = "^%s/" % mount
-                adobe_info['adobepatchinstaller'] = re.sub(mountpointPattern, '', adobepatchinstaller) 
-    
+                adobepatchinstaller = re.sub(mountpointPattern, '', adobepatchinstaller)
+
+                # Some subdirs have spaces, so escape them
+                if ' ' in adobepatchinstaller:
+                    adobepatchinstaller = adobepatchinstaller.replace(' ', '\ ')
+
+                adobe_info['adobepatchinstaller'] = adobepatchinstaller
+
                 for (path, dummy_dirs, dummy_files) in os.walk(mount):
                     if path.endswith('/payloads'):
                         payloads_dir = path
@@ -511,10 +518,13 @@ if args.adobe:
         
         # Sanitize and workaround Adobe naming inconsistency
         adobe_info['name'] = ''.join(adobe_info['display_name'].split('.')[0])
-        if 'Flash' in adobe_info['name'] and 'Professional ' in adobe_info['name']:
-            adobe_info['name'] = adobe_info['name'].replace('Professional ', '')
-        if 'Adobe ' in adobe_info['name']:
-            adobe_info['name'] = adobe_info['name'].replace('Adobe ', '')
+        if 'Flash' in adobe_info['display_name'] and 'Professional ' in adobe_info['display_name']:
+            adobe_info['display_name'] = adobe_info['display_name'].replace('Professional ', '')
+            adobe_info['name'] = adobe_info['display_name']
+        if not adobe_info['display_name'].startswith('Adobe '):
+            adobe_info['display_name'] = "Adobe %s" % adobe_info['name']
+        if adobe_info['name'] == 'Adobe Illustrator CC 2014':
+            adobe_info['name'] = 'Adobe Illustrator'
 
         # Determine base version
         adobe_info['base_version'] = "%s.0.0" % adobe_info['version'].split('.')[0]

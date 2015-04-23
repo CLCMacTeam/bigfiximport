@@ -13,7 +13,7 @@
 </table>
 		]]></Description>
 		<Relevance>mac of operating system</Relevance>
-		<Relevance><![CDATA[exists folder "/Applications/{{ name }}/{{ name }}.app" whose (version of it >= "{{ base_version }}" as version AND version of it < "{{ version }}" as version)]]></Relevance>
+		<Relevance><![CDATA[exists folder "/Applications/{{ display_name }}/{{ name }}.app" whose (version of it >= "{{ base_version }}" as version AND version of it < "{{ version }}" as version)]]></Relevance>
 		<Category>Software Sharing</Category>
 		<DownloadSize>{{ size }}</DownloadSize>
 		<Source>bigfiximport.py</Source>

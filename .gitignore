@@ -1,0 +1,7 @@
+
+# Config_File
+besapi.conf
+BES_CONFIG.py
+
+# compiled python files
+*.pyc

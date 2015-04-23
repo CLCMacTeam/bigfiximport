@@ -85,7 +85,7 @@ if sys.platform.startswith('darwin'):
 
 elif sys.platform.startswith('win'):
     PLATFORM = 'win'
-elif sys.platform.startwith('linux'):
+elif sys.platform.startswith('linux'):
     PLATFORM = 'linux'
 
 try:

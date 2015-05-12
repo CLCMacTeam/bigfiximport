@@ -27,7 +27,7 @@
 			</Description>
 			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.pkg sha1:{{ sha1 }} size:{{ size }} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/{{ name }}/{{ base_file_name }}-{{ version }}.pkg
 
-wait /usr/sbin/installer -pkg {{ base_file_name }}.pkg -target /
+wait /usr/sbin/installer -pkg "__Download/{{ base_file_name }}.pkg" -target /
 
 // Software Sharing Tracking
 wait /bin/sh -c "/usr/bin/defaults write '/Library/Sysman/Sysman' 'Tasks' -array-add 'Software Sharing - {value of header "Subject" of active action} -- Install/Upgrade - {(month of it as two digits & "/" & day_of_month of it as two digits & "/" & year of it as string) of date (local time zone) of now}'"

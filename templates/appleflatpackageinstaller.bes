@@ -5,7 +5,7 @@
 		<Description><![CDATA[<h5>Deploy {{ display_name }} {{ version }}</h5><br/>{{ description }}]]></Description>
 		<Relevance>mac of operating system</Relevance>
 		<Relevance><![CDATA[system version >= "{{ minimum_os_version }}" as version]]></Relevance>
-		<Relevance><![CDATA[{% for p in receipts %}not exists file "/var/db/receipts/{{ p.packageid }}.plist" whose (exists dictionary whose (string "PackageVersion" of it as version >= "{{ p.version }}" as version) of it{% if not loop.last %} OR {% endif %}{% endfor %})]]></Relevance>
+		<Relevance><![CDATA[{% for p in receipts %}not exists file "/var/db/receipts/{{ p.packageid }}.plist" whose (exists dictionary whose (string "PackageVersion" of it as version >= "{{ p.version }}" as version) of it){% if not loop.last %} OR {% endif %}{% endfor %}]]></Relevance>
 		<Category>Software Sharing</Category>
 		<DownloadSize>{{ size }}</DownloadSize>
 		<Source>bigfiximport.py</Source>

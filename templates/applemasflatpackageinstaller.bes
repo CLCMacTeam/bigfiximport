@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Install/Upgrade: {{ display_name }} {{ version }} - Mac OS X</Title>
+		<Description><![CDATA[<h5>Deploy {{ display_name }} {{ version }}</h5><br/>{{ description }}]]></Description>
+		<Relevance>mac of operating system</Relevance>
+		<Relevance><![CDATA[system version >= "10.10" as version]]></Relevance>
+		<Relevance><![CDATA[{% if relevance %}{{ relevance }}{% else %}not exists folder "/Applications/{{ display_name }}.app" whose (version of it >= "{{ version}}" as version){% endif %}]]></Relevance>
+		<Category>Software Sharing</Category>
+		<DownloadSize>{{ size }}</DownloadSize>
+		<Source>bigfiximport.py</Source>
+		<SourceID>{{ user }}</SourceID>
+		<SourceReleaseDate>{{ today }}</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>{{ strftime }}</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.pkg sha1:{{ sha1 }} size:{{ size }}{% if url %} {{ url }}{% else %} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/REPLACEME{% endif %} sha256:{{ sha256 }}
+
+wait /usr/sbin/installer -pkg "__Download/{{ base_file_name }}.pkg" -target /
+
+{% include 'sysmantrackingmac.bes' %}]]></ActionScript>
+			<SuccessCriteria Option="OriginalRelevance"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

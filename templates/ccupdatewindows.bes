@@ -49,7 +49,7 @@ waithidden __Download\unzip.exe -o "{pathname of file "setup.zip" of folder "__D
 // --mode=silent --skipProcessCheck=1
 waithidden __Download\AdobePatchInstaller.exe --mode=silent
 
-{% include 'sysmantrackingmac.bes' %}]]></ActionScript>
+{% include 'sysmantrackingwindows.bes' %}]]></ActionScript>
 			<SuccessCriteria Option="OriginalRelevance"></SuccessCriteria>
 		</DefaultAction>
 	</Task>

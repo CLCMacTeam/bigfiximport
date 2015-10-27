@@ -69,6 +69,8 @@ parser.add_argument('--package', action='store_true', default=False,
                     help='process an OS X package installer')
 parser.add_argument('--key', action='append', dest='variables',
                       default=[], help='Provide key=value pairs for input.'),
+parser.add_argument('--template', action='store', dest='template',
+                      default=[], help='Use an alternative template.'),
 parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
 
 args, extra_args = parser.parse_known_args()
@@ -364,6 +366,10 @@ for arg in args.variables:
             print "Invalid variable [key=value]: %s" % arg
             sys.exit(1)
         cli_values[key] = value
+        
+calc_values = {}
+if DARWIN_FOUNDATION_AVAILABLE:
+    calc_values['url'] = getkMDItemWhereFroms(file_path, None)
 
 if args.verbosity > 1:
     print "Command-line Variables: %s" % cli_values
@@ -372,7 +378,11 @@ if args.verbosity > 1:
 # OS X Drag & Drop App
 # -----------------------------------------------------------------------------
 if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE and not args.adobe:
-    template = env.get_template('copyfromdmg.bes')
+    if args.template:
+        template = env.get_template(args.template)
+    else:
+        template = env.get_template('copyfromdmg.bes')
+
     mountpoints = munkicommon.mountdmg(file_path, use_existing_mounts=True)
 
     iteminfo = ''
@@ -406,6 +416,10 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
             # Update with input variables
             if cli_values:
                 cataloginfo.update(cli_values)
+                
+            # Update with calculated values
+            if calc_values:
+                cataloginfo.update(calc_values)
             
             # Render new task
             rendered_template = template.render(**cataloginfo)
@@ -420,8 +434,11 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
 # OS X Flat Installer Package (.pkg)
 # -----------------------------------------------------------------------------
 if file_mime == 'application/octet-stream' and file_extension == '.pkg' and args.package:
-
-    template = env.get_template('appleflatpackageinstaller.bes')
+    if args.template:
+        template = env.get_template(args.template)
+    else:
+        template = env.get_template('appleflatpackageinstaller.bes')
+    
     pkginfo = munkicommon.getPackageMetaData(file_path)
     
     pkginfo.update(get_sha_size(file_path))
@@ -432,6 +449,10 @@ if file_mime == 'application/octet-stream' and file_extension == '.pkg' and args
     if cli_values:
         pkginfo.update(cli_values)
     
+    # Update with calculated values
+    if calc_values:
+        pkginfo.update(calc_values)
+
     # Render new task
     rendered_template = template.render(**pkginfo)
 
@@ -462,8 +483,19 @@ if HACHOIR_AVAILABLE and file_mime == 'application/x-msdownload' and file_extens
     for data_item in getHachoirMetaData(file_path):
         for value in data_item.values:
             mimeinfo[data_item.key] = filter(lambda x: x in string.printable, value.text)
-            
-    print mimeinfo
+    if args.verbosity > 1: 
+        print mimeinfo
+    
+    mimeinfo.update(get_sha_size(file_path))
+    mimeinfo.update(get_env_source_mime_data())
+    mimeinfo['base_file_name'] = base_file_name
+    
+    if args.template:
+        template = env.get_template(args.template)
+    else:
+        template = env.get_template('windowsexe.bes')
+        
+    rendered_template = template.render(**mimeinfo)
 
 # -----------------------------------------------------------------------------
 # Adobe Updates
@@ -473,7 +505,11 @@ if args.adobe:
 
     # Mac Adobe Update (.dmg)
     if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE:
-        template = env.get_template('ccupdatemacosx.bes')
+        if args.template:
+            template = env.get_template(args.template)
+        else:
+            template = env.get_template('ccupdatemacosx.bes')
+        
         mounts = adobeutils.mountAdobeDmg(file_path)
     
         try:
@@ -506,14 +542,16 @@ if args.adobe:
     
     # Windows Adobe Update (.zip)
     elif file_mime == 'application/zip' and file_is_local:
-        
-        # Pick template based on '64bit' or '32bit' in file_path
-        if any(x in file_path for x in ['64Bit', '64bit', 'X64', 'x64']):
-            template = env.get_template('ccupdatewindows64.bes')
-        elif any(x in file_path for x in ['32Bit', '32bit']):
-            template = env.get_template('ccupdatewindows32.bes')
+        if args.template:
+            template = env.get_template(args.template)
         else:
-            template = env.get_template('ccupdatewindows.bes')
+            # Pick template based on '64bit' or '32bit' in file_path
+            if any(x in file_path for x in ['64Bit', '64bit', 'X64', 'x64']):
+                template = env.get_template('ccupdatewindows64.bes')
+            elif any(x in file_path for x in ['32Bit', '32bit']):
+                template = env.get_template('ccupdatewindows32.bes')
+            else:
+                template = env.get_template('ccupdatewindows.bes')
     
         zf = zipfile.ZipFile(file_path, 'r')
         extractdir = os.path.join(tempfile.gettempdir(), file_name_noextension)
@@ -580,7 +618,11 @@ if args.adobe:
         # Update with input variables
         if cli_values:
             adobe_info.update(cli_values)
-    
+
+        # Update with calculated values
+        if calc_values:
+            pkginfo.update(calc_values)
+
         # Render new task
         rendered_template = template.render(**adobe_info)
 
@@ -597,7 +639,10 @@ if 'rendered_template' in locals():
 
 # Reporting Output
 if 'new_task' in locals(): 
-    if len(new_task()):
-        print "\nNew Task: %s - %s" % (str(new_task().Task.Name), str(new_task().Task.ID))
-    else:
+    try:
+        if len(new_task()):
+            print "\nNew Task: %s - %s" % (str(new_task().Task.Name), str(new_task().Task.ID))
+        else:
+            print new_task
+    except:
         print new_task

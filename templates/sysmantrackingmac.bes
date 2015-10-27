@@ -1,0 +1,4 @@
+// Software Sharing Tracking
+wait /bin/sh -c "/usr/bin/defaults write '/Library/Sysman/Sysman' 'Tasks' -array-add 'Software Sharing - {value of header "Subject" of active action} -- Install/Upgrade - {(month of it as two digits & "/" & day_of_month of it as two digits & "/" & year of it as string) of date (local time zone) of now}'"
+wait /bin/sh -c "/bin/chmod 755 '/Library/Sysman/Sysman.plist'"
+wait /bin/sh -c "/bin/chmod 755 '/Library/Sysman'"

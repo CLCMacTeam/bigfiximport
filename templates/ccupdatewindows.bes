@@ -36,6 +36,7 @@
 			</Description>
 			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.zip sha1:{{ sha1 }} size:{{ size }} {{ url }}
 
+
 //  - This unzip is a compiled verion of unzip v5.52 fom http://info-zip.org/
 //  - https://www.virustotal.com/en/file/8d9b5190aace52a1db1ac73a65ee9999c329157c8e88f61a772433323d6b7a4a/analysis
 prefetch unzip.exe sha1:e1652b058195db3f5f754b7ab430652ae04a50b8 size:167936 http://software.bigfix.com/download/redist/unzip-5.52.exe
@@ -46,7 +47,9 @@ utility __Download\unzip.exe
 waithidden __Download\unzip.exe -o "{pathname of file "setup.zip" of folder "__Download" of client folder of current site}" -d "{pathname of folder "__Download" of client folder of current site}"
 
 // --mode=silent --skipProcessCheck=1
-waithidden __Download\AdobePatchInstaller.exe --mode=silent]]></ActionScript>
+waithidden __Download\AdobePatchInstaller.exe --mode=silent
+
+{% include 'sysmantrackingmac.bes' %}]]></ActionScript>
 			<SuccessCriteria Option="OriginalRelevance"></SuccessCriteria>
 		</DefaultAction>
 	</Task>

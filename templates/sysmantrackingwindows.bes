@@ -1,0 +1,2 @@
+//set SysMan tracking entry
+regset64 "[HKEY_LOCAL_MACHINE\SOFTWARE\PSU\Sysman\Applications]" "{value of header "Subject" of active action}"="Install/Upgrade and disable auto-updates - {(month of it as two digits & "/" & day_of_month of it as two digits & "/" & year of it as string) of date (local time zone) of now}"

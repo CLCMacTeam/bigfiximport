@@ -67,6 +67,8 @@ parser.add_argument('--copyfromdmg', action='store_true', default=False,
                     help='process an OS X copy from dmg installer')
 parser.add_argument('--package', action='store_true', default=False,
                     help='process an OS X package installer')
+parser.add_argument('--key', action='append', dest='variables',
+                      default=[], help='Provide key=value pairs for input.'),
 parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
 
 args, extra_args = parser.parse_known_args()
@@ -83,11 +85,16 @@ MUNKILIB_AVAILABLE = False
 
 if sys.platform.startswith('darwin'):
     PLATFORM = 'darwin'
+    
     try:
         import Foundation
         DARWIN_FOUNDATION_AVAILABLE = True
     except ImportError:
         DARWIN_FOUNDATION_AVAILABLE = False
+    
+    # Used to read and parse filesystem attributes
+    import json
+    import xattr
 
 elif sys.platform.startswith('win'):
     PLATFORM = 'win'
@@ -187,6 +194,22 @@ B = besapi.BESConnection(BES_USER_NAME, BES_PASSWORD, BES_ROOT_SERVER)
 
 def guess_file_type(url, use_strict=False):
     return mimetypes.guess_type(file_path, use_strict)
+    
+def getkMDItemWhereFroms(file_path, default):
+    
+    from subprocess import Popen, PIPE
+
+    if u'com.apple.metadata:kMDItemWhereFroms' in xattr.listxattr(file_path):
+        bplist_data = xattr.getxattr(file_path, 'com.apple.metadata:kMDItemWhereFroms')
+        
+        args = ["/usr/bin/plutil", "-convert", "json", "-o", "-", "--", "-"]
+        p = Popen(args, stdin=PIPE, stdout=PIPE)
+        p.stdin.write(bplist_data)
+        out, err = p.communicate()
+        
+        return str(json.loads(out)[0])
+    else:
+        return default
 
 def print_zip_info(zf):
     for info in zf.infolist():
@@ -206,10 +229,11 @@ def get_env_source_mime_data():
                 'user'      : getpass.getuser()
             }
 
-def get_sha1_size(file_path):
+def get_sha_size(file_path):
     return {
                 'sha1'  : hashlib.sha1(file(file_path).read()).hexdigest(),
-                'size'  : os.path.getsize(file_path)
+                'size'  : os.path.getsize(file_path),
+                'sha256': hashlib.sha256(file(file_path).read()).hexdigest()
             }
 
 def getiteminfo(itempath):
@@ -332,6 +356,18 @@ file_name = os.path.basename(file_path)
 file_name_noextension, file_extension = os.path.splitext(file_name)
 base_file_name = file_name.split('-')[0].split('.')[0]
 
+# Add command-line variables
+cli_values = {}
+for arg in args.variables:
+        (key, sep, value) = arg.partition("=")
+        if sep != "=":
+            print "Invalid variable [key=value]: %s" % arg
+            sys.exit(1)
+        cli_values[key] = value
+
+if args.verbosity > 1:
+    print "Command-line Variables: %s" % cli_values
+
 # -----------------------------------------------------------------------------
 # OS X Drag & Drop App
 # -----------------------------------------------------------------------------
@@ -364,8 +400,12 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
             cataloginfo.update(iteminfo)
             cataloginfo['item_to_copy'] = item
             cataloginfo['base_file_name'] = base_file_name
-            cataloginfo.update(get_sha1_size(file_path))
+            cataloginfo.update(get_sha_size(file_path))
             cataloginfo.update(get_env_source_mime_data())
+            
+            # Update with input variables
+            if cli_values:
+                cataloginfo.update(cli_values)
             
             # Render new task
             rendered_template = template.render(**cataloginfo)
@@ -384,9 +424,13 @@ if file_mime == 'application/octet-stream' and file_extension == '.pkg' and args
     template = env.get_template('appleflatpackageinstaller.bes')
     pkginfo = munkicommon.getPackageMetaData(file_path)
     
-    pkginfo.update(get_sha1_size(file_path))
+    pkginfo.update(get_sha_size(file_path))
     pkginfo.update(get_env_source_mime_data())
     pkginfo['base_file_name'] = base_file_name
+    
+    # Update with input variables
+    if cli_values:
+        pkginfo.update(cli_values)
     
     # Render new task
     rendered_template = template.render(**pkginfo)
@@ -531,7 +575,11 @@ if args.adobe:
     
         adobe_info['base_file_name'] = base_file_name
         adobe_info.update(get_env_source_mime_data())
-        adobe_info.update(get_sha1_size(file_path))
+        adobe_info.update(get_sha_size(file_path))
+    
+        # Update with input variables
+        if cli_values:
+            adobe_info.update(cli_values)
     
         # Render new task
         rendered_template = template.render(**adobe_info)

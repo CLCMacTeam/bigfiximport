@@ -35,7 +35,9 @@
 			</Description>
 			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.dmg sha1:{{ sha1 }} size:{{ size }} {{ url }}
 
+
 delete "/tmp/{{ base_file_name }}.dmg"
+
 move "__Download/{{ base_file_name }}.dmg" "/tmp/{{ base_file_name }}.dmg"
 
 wait /usr/bin/hdiutil attach -quiet -nobrowse -private -mountpoint "/tmp/{{ base_file_name }}" "/tmp/{{ base_file_name }}.dmg"
@@ -44,6 +46,7 @@ wait /tmp/{{ base_file_name }}/{{ adobepatchinstaller }} --mode=silent --skipPro
 
 wait /usr/bin/hdiutil detach -force "/tmp/{{ base_file_name }}"
 delete "/tmp/{{ base_file_name }}.dmg"
+
 
 // Software Sharing Tracking
 wait /bin/sh -c "/usr/bin/defaults write '/Library/Sysman/Sysman' 'Tasks' -array-add 'Software Sharing - {value of header "Subject" of active action} -- Install/Upgrade - {(month of it as two digits & "/" & day_of_month of it as two digits & "/" & year of it as string) of date (local time zone) of now}'"

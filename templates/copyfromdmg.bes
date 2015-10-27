@@ -25,7 +25,7 @@
 				<Link>here</Link>
 				<PostLink> to deploy this action.</PostLink>
 			</Description>
-			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.dmg sha1:{{ sha1 }} size:{{ size }} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/{{ display_name }}/{{ base_file_name }}-{{ version }}.dmg
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.dmg sha1:{{ sha1 }} size:{{ size }}{% if url %} {{ url }}{% else %} http://bes.win.psu.edu:52311/ManualUploads/PSU-Mac/REPLACEME{% endif %} sha256:{{ sha256 }}
 
 delete "/tmp/{{ base_file_name }}.dmg"
 move "__Download/{{ base_file_name }}.dmg" "/tmp/{{ base_file_name }}.dmg"
@@ -47,10 +47,7 @@ wait /bin/chmod -R o+r "/Applications/{{ item_to_copy }}"
 
 delete "/tmp/{{ base_file_name }}.dmg"
 
-// Software Sharing Tracking
-wait /bin/sh -c "/usr/bin/defaults write '/Library/Sysman/Sysman' 'Tasks' -array-add 'Software Sharing - {value of header "Subject" of active action} -- Install/Upgrade - {(month of it as two digits & "/" & day_of_month of it as two digits & "/" & year of it as string) of date (local time zone) of now}'"
-wait /bin/sh -c "/bin/chmod 755 '/Library/Sysman/Sysman.plist'"
-wait /bin/sh -c "/bin/chmod 755 '/Library/Sysman'"]]></ActionScript>
+{% include 'sysmantrackingmac.bes' %}]]></ActionScript>
 			<SuccessCriteria Option="OriginalRelevance"></SuccessCriteria>
 		</DefaultAction>
 	</Task>

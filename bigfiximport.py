@@ -433,7 +433,7 @@ if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOU
 # -----------------------------------------------------------------------------
 # OS X Flat Installer Package (.pkg)
 # -----------------------------------------------------------------------------
-if file_mime == 'application/octet-stream' and file_extension == '.pkg' and args.package:
+elif file_mime == 'application/octet-stream' and file_extension == '.pkg' and args.package:
     if args.template:
         template = env.get_template(args.template)
     else:
@@ -459,27 +459,27 @@ if file_mime == 'application/octet-stream' and file_extension == '.pkg' and args
 # -----------------------------------------------------------------------------
 # OS X Bundle Installer Package (.mpkg)
 # -----------------------------------------------------------------------------
-if file_name_isfolder and file_extension == '.mpkg' and args.package:
+elif file_name_isfolder and file_extension == '.mpkg' and args.package:
     pass
     
 
 # -----------------------------------------------------------------------------
 # OS X Package in a Disk Image
 # -----------------------------------------------------------------------------
-if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE and args.package:
+elif file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE and args.package:
     pass
     
 # -----------------------------------------------------------------------------
 # Windows MSI
 # -----------------------------------------------------------------------------
-if file_mime == 'application/x-msdownload' and file_extension == '.msi':
+elif file_mime == 'application/x-msdownload' and file_extension == '.msi':
     pass
 
 # -----------------------------------------------------------------------------
 # Windows EXE
 # -----------------------------------------------------------------------------
-mimeinfo = {}
-if HACHOIR_AVAILABLE and file_mime == 'application/x-msdownload' and file_extension == '.exe':
+elif HACHOIR_AVAILABLE and file_mime == 'application/x-msdownload' and file_extension == '.exe':
+    mimeinfo = {}
     for data_item in getHachoirMetaData(file_path):
         for value in data_item.values:
             mimeinfo[data_item.key] = filter(lambda x: x in string.printable, value.text)
@@ -501,7 +501,7 @@ if HACHOIR_AVAILABLE and file_mime == 'application/x-msdownload' and file_extens
 # Adobe Updates
 # -----------------------------------------------------------------------------
 
-if args.adobe:
+elif args.adobe:
 
     # Mac Adobe Update (.dmg)
     if file_mime == 'application/x-apple-diskimage' and file_is_local and DARWIN_FOUNDATION_AVAILABLE:
@@ -625,6 +625,27 @@ if args.adobe:
 
         # Render new task
         rendered_template = template.render(**adobe_info)
+
+# -----------------------------------------------------------------------------
+# Custom Task
+# -----------------------------------------------------------------------------
+
+elif args.template:
+    task_info = {}
+    
+    # Update with calculated values
+    if calc_values:
+        task_info.update(calc_values)
+
+    # Use named template
+    template = env.get_template(args.template)
+    
+    # Update with input variables
+    if cli_values:
+        task_info.update(cli_values)
+
+    # Render new task
+    rendered_template = template.render(**task_info)
 
 # -----------------------------------------------------------------------------
 # Import Into Console Site

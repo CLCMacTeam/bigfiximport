@@ -33,7 +33,7 @@
 			</Description>
 			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[prefetch {{ base_file_name }}.exe sha1:{{ sha1 }} size:{{ size }}{% if url %} {{ url }}{% else %} http://bes.win.psu.edu:52311/ManualUploads/PSU-Windows/REPLACEME{% endif %} sha256:{{ sha256 }}
 
-waithidden __Download\base_file_name.exe /S
+waithidden __Download\{{ base_file_name }}.exe /S
 
 {% include 'sysmantrackingwindows.bes' %}]]></ActionScript>
 			<SuccessCriteria Option="OriginalRelevance"></SuccessCriteria>

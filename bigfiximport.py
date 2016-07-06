@@ -183,6 +183,11 @@ BES_ROOT_SERVER = CONFPARSER.get('besapi', 'BES_ROOT_SERVER')
 BES_USER_NAME = CONFPARSER.get('besapi', 'BES_USER_NAME')
 BES_PASSWORD = CONFPARSER.get('besapi', 'BES_PASSWORD')
 
+if 'bigfiximport' in CONFPARSER.sections():
+    BES_DEFAULTSITE = CONFPARSER.get('bigfiximport', 'BES_DEFAULTSITE')
+else:
+    BES_DEFAULTSITE = "master"
+
 if 'besarchiver' in CONFPARSER.sections():
     VERBOSE = CONFPARSER.getboolean('besarchiver', 'VERBOSE')
 else:
@@ -654,9 +659,9 @@ elif args.template:
 if 'rendered_template' in locals():
     print rendered_template
 
-    to_import = raw_input('Import into tasks/custom/SysManDev [y or n]: ')
+    to_import = raw_input('Import into tasks/%s [y or n]: ' % BES_DEFAULTSITE)
     if to_import and to_import.lower() in ['y', 'yes']:
-        new_task = B.post('tasks/custom/SysManDev', rendered_template)
+        new_task = B.post('tasks/%s' % BES_DEFAULTSITE, rendered_template)
 
 # Reporting Output
 if 'new_task' in locals(): 

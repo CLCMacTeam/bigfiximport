@@ -1,5 +1,5 @@
 [besapi]
-BES_ROOT_SERVER = https://bes.win.psu.edu:52311
+BES_ROOT_SERVER = https://bigfix.organization.tld:52311
 BES_USER_NAME = 
 BES_PASSWORD = 
 
